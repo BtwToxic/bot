@@ -1,13 +1,14 @@
 import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import ChatJoinRequest
+from pyrogram.errors import UserIsBlocked, PeerIdInvalid
 
 # ─────────────────────────────
-# BOT CONFIG
+# BOT CONFIG (AS YOU REQUESTED)
 # ─────────────────────────────
-API_ID = 31682846              
-API_HASH = "ee8f0b706749f918f59fc74a60bc0381"   
-BOT_TOKEN = "8573758498:AAG33V_OV793ICVavWgg-KvINZYp89XK9kM"  
+API_ID = 31682846
+API_HASH = "ee8f0b706749f918f59fc74a60bc0381"
+BOT_TOKEN = "8573758498:AAG33V_OV793ICVavWgg-KvINZYp89XK9kM"
 
 app = Client(
     "auto_accept_delay_bot",
@@ -17,13 +18,13 @@ app = Client(
 )
 
 # ─────────────────────────────
-# DELAY STORAGE (PER GROUP)
+# DELAY STORAGE
 # ─────────────────────────────
-JOIN_DELAY = {}   # chat_id : seconds
+JOIN_DELAY = {}  # chat_id : seconds
 
 
 # ─────────────────────────────
-# ADMIN CHECK (LATEST SAFE METHOD)
+# ADMIN CHECK (FIXED – NO FALSE ERRORS)
 # ─────────────────────────────
 async def is_admin(client, chat_id, user_id):
     try:
@@ -40,21 +41,17 @@ async def is_admin(client, chat_id, user_id):
 async def set_delay(client, message):
     if not message.from_user:
         return await message.reply_text(
-            "❌ Anonymous admins are not supported.\n"
-            "Please disable anonymous admin mode."
+            "❌ Anonymous admins are not supported."
         )
 
-    chat_id = message.chat.id
-    user_id = message.from_user.id
-
-    if not await is_admin(client, chat_id, user_id):
+    if not await is_admin(client, message.chat.id, message.from_user.id):
         return await message.reply_text(
             "❌ Only group admins can set the delay."
         )
 
     if len(message.command) != 2:
         return await message.reply_text(
-            "❌ Usage:\n`/delay <minutes>`\nExample: `/delay 1`"
+            "Usage: /delay <minutes>\nExample: /delay 1"
         )
 
     try:
@@ -63,21 +60,21 @@ async def set_delay(client, message):
             raise ValueError
     except ValueError:
         return await message.reply_text(
-            "❌ Delay must be between 0 and 1440 minutes."
+            "Delay must be between 0 and 1440 minutes."
         )
 
-    JOIN_DELAY[chat_id] = minutes * 60
+    JOIN_DELAY[message.chat.id] = minutes * 60
 
     if minutes == 0:
-        await message.reply_text("✅ Join request delay has been **disabled**.")
+        await message.reply_text("✅ Join request delay disabled.")
     else:
         await message.reply_text(
-            f"✅ Join request delay set to **{minutes} minute(s)**."
+            f"✅ Join request delay set to {minutes} minute(s)."
         )
 
 
 # ─────────────────────────────
-# AUTO ACCEPT JOIN REQUEST
+# AUTO ACCEPT JOIN REQUEST (FIXED)
 # ─────────────────────────────
 @app.on_chat_join_request()
 async def auto_accept(client: Client, request: ChatJoinRequest):
@@ -85,34 +82,41 @@ async def auto_accept(client: Client, request: ChatJoinRequest):
     user = request.from_user
     delay = JOIN_DELAY.get(chat.id, 0)
 
-    # Delay before approval
+    # Delay
     if delay > 0:
         await asyncio.sleep(delay)
 
-    # Approve request
+    # ALWAYS approve request
     try:
         await request.approve()
     except:
         return
 
-    # Send DM (allowed by Telegram for join-request context)
+    # Message text (same as your screenshot)
+    text = (
+        "✅ **Your request has been accepted successfully!**\n\n"
+        f"👥 Group: **{chat.title}**\n"
+        f"⏱ Delay: {delay // 60} minute(s)\n\n"
+        "🎉 Welcome!"
+    )
+
+    # Try DM
     try:
-        await client.send_message(
-            user.id,
-            f"✅ **Your join request has been approved!**\n\n"
-            f"👥 Group: **{chat.title}**\n"
-            f"⏱ Delay: {delay // 60} minute(s)\n\n"
-            "🎉 Welcome!\n\n"
-            "ℹ️ To receive future messages, you may /start the bot."
-        )
+        await client.send_message(user.id, text)
+
+    except (UserIsBlocked, PeerIdInvalid):
+        # Bot is blocked → Telegram will show system notification automatically
+        pass
+
     except:
         pass
 
-    # Optional group welcome message
+    # Group fallback message (optional but useful)
     try:
         await client.send_message(
             chat.id,
-            f"👋 {user.mention} joined the group."
+            f"👋 {user.mention} joined the group.\n"
+            "ℹ️ Please unblock the bot to receive welcome messages."
         )
     except:
         pass

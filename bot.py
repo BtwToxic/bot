@@ -7,7 +7,7 @@ from pyrogram.types import ChatJoinRequest
 # ─────────────────────────────
 API_ID = 31682846              
 API_HASH = "ee8f0b706749f918f59fc74a60bc0381"   
-BOT_TOKEN = ""  
+BOT_TOKEN = "8573758498:AAG33V_OV793ICVavWgg-KvINZYp89XK9kM"  
 
 app = Client(
     "auto_accept_delay_bot",

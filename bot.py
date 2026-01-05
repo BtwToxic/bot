@@ -4,7 +4,7 @@ from pyrogram.types import ChatJoinRequest
 from pyrogram.errors import UserIsBlocked, PeerIdInvalid
 
 # ─────────────────────────────
-# BOT CONFIG (AS YOU REQUESTED)
+# BOT CONFIG (AS YOU ASKED)
 # ─────────────────────────────
 API_ID = 31682846
 API_HASH = "ee8f0b706749f918f59fc74a60bc0381"
@@ -18,17 +18,27 @@ app = Client(
 )
 
 # ─────────────────────────────
-# DELAY STORAGE
+# DELAY STORAGE (PER GROUP)
 # ─────────────────────────────
 JOIN_DELAY = {}  # chat_id : seconds
 
 
 # ─────────────────────────────
-# ADMIN CHECK (FIXED – NO FALSE ERRORS)
+# ADMIN CHECK (FIXED FOR ALL CASES)
 # ─────────────────────────────
-async def is_admin(client, chat_id, user_id):
+async def is_admin(client, message):
+    # Anonymous / channel admin
+    if message.sender_chat:
+        return True
+
+    if not message.from_user:
+        return False
+
     try:
-        member = await client.get_chat_member(chat_id, user_id)
+        member = await client.get_chat_member(
+            message.chat.id,
+            message.from_user.id
+        )
         return member.status in ("administrator", "creator")
     except:
         return False
@@ -39,19 +49,14 @@ async def is_admin(client, chat_id, user_id):
 # ─────────────────────────────
 @app.on_message(filters.command("delay") & filters.group)
 async def set_delay(client, message):
-    if not message.from_user:
-        return await message.reply_text(
-            "❌ Anonymous admins are not supported."
-        )
-
-    if not await is_admin(client, message.chat.id, message.from_user.id):
+    if not await is_admin(client, message):
         return await message.reply_text(
             "❌ Only group admins can set the delay."
         )
 
     if len(message.command) != 2:
         return await message.reply_text(
-            "Usage: /delay <minutes>\nExample: /delay 1"
+            "Usage:\n/delay <minutes>\nExample: /delay 1"
         )
 
     try:
@@ -60,7 +65,7 @@ async def set_delay(client, message):
             raise ValueError
     except ValueError:
         return await message.reply_text(
-            "Delay must be between 0 and 1440 minutes."
+            "❌ Delay must be between 0 and 1440 minutes."
         )
 
     JOIN_DELAY[message.chat.id] = minutes * 60
@@ -74,7 +79,7 @@ async def set_delay(client, message):
 
 
 # ─────────────────────────────
-# AUTO ACCEPT JOIN REQUEST (FIXED)
+# AUTO ACCEPT JOIN REQUEST
 # ─────────────────────────────
 @app.on_chat_join_request()
 async def auto_accept(client: Client, request: ChatJoinRequest):
@@ -82,17 +87,17 @@ async def auto_accept(client: Client, request: ChatJoinRequest):
     user = request.from_user
     delay = JOIN_DELAY.get(chat.id, 0)
 
-    # Delay
+    # Delay before approval
     if delay > 0:
         await asyncio.sleep(delay)
 
-    # ALWAYS approve request
+    # ALWAYS approve
     try:
         await request.approve()
     except:
         return
 
-    # Message text (same as your screenshot)
+    # Message (exact behavior like screenshot)
     text = (
         "✅ **Your request has been accepted successfully!**\n\n"
         f"👥 Group: **{chat.title}**\n"
@@ -100,23 +105,22 @@ async def auto_accept(client: Client, request: ChatJoinRequest):
         "🎉 Welcome!"
     )
 
-    # Try DM
+    # ALWAYS try to DM (every request = new DM attempt)
     try:
         await client.send_message(user.id, text)
 
     except (UserIsBlocked, PeerIdInvalid):
-        # Bot is blocked → Telegram will show system notification automatically
+        # Bot blocked → Telegram automatically shows system notification
         pass
 
     except:
         pass
 
-    # Group fallback message (optional but useful)
+    # Optional group fallback (visible proof)
     try:
         await client.send_message(
             chat.id,
-            f"👋 {user.mention} joined the group.\n"
-            "ℹ️ Please unblock the bot to receive welcome messages."
+            f"👋 {user.mention} joined the group."
         )
     except:
         pass

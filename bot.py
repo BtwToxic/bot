@@ -3,11 +3,11 @@ from pyrogram import Client, filters
 from pyrogram.types import ChatJoinRequest
 
 # ─────────────────────────────
-# BOT CONFIG (EDIT THESE)
+# BOT CONFIG
 # ─────────────────────────────
-API_ID = 12345678                  # your api_id
-API_HASH = "YOUR_API_HASH_HERE"     # your api_hash
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"   # your bot token
+API_ID = 31682846              
+API_HASH = "ee8f0b706749f918f59fc74a60bc0381"   
+BOT_TOKEN = ""  
 
 app = Client(
     "auto_accept_delay_bot",
